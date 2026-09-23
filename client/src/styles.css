@@ -1846,3 +1846,104 @@ a.stat:hover {
     grid-template-columns: repeat(6, 1fr);
   }
 }
+
+/* ============ Phones ============ */
+@media (max-width: 720px) {
+  /* Landing: illustration becomes a vertical stack instead of overlapping absolute cards */
+  .hero {
+    gap: 28px;
+    padding-bottom: 40px;
+  }
+  .hero .row .btn-lg {
+    flex: 1 1 100%;
+  }
+  .hero-art {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .loop-card,
+  .loop-ring,
+  .match-pill {
+    position: static;
+  }
+  .loop-card {
+    width: min(260px, 82%);
+  }
+  .loop-card.a {
+    align-self: flex-start;
+    transform: rotate(-3deg);
+  }
+  .loop-card.b {
+    align-self: flex-end;
+    transform: rotate(2deg);
+  }
+  .loop-ring {
+    transform: none;
+    width: 60px;
+    height: 60px;
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--violet) 20%, transparent);
+  }
+  .match-pill {
+    order: 3;
+  }
+  .trust {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-top: 32px;
+    padding-bottom: 40px;
+  }
+
+  /* Dashboard: two stat tiles per row */
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .stats > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .stat {
+    padding: 14px;
+  }
+  .stat strong {
+    font-size: 1.6rem;
+  }
+
+  .page {
+    padding-top: 20px;
+  }
+  .panel {
+    padding: 18px;
+  }
+  .table-wrap {
+    margin: 0 -18px;
+    padding: 0 18px;
+  }
+  .swap-head .row {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+  .member-hero h1 {
+    justify-content: center;
+  }
+  .modal-body {
+    padding: 18px 16px 20px;
+  }
+}
+
+@media (max-width: 420px) {
+  .landing-nav .btn-ghost {
+    display: none;
+  }
+  .landing-nav .btn {
+    padding: 8px 16px;
+  }
+  .swap-trade,
+  .swap-preview {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+}
