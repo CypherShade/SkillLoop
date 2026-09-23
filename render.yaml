@@ -1,0 +1,33 @@
+# Render Blueprint for the SkillLoop API.
+# Render dashboard -> New -> Blueprint -> pick this repo. Fill in the "sync: false" values when prompted.
+services:
+  - type: web
+    name: skillloop-api
+    runtime: node
+    rootDir: server
+    plan: free
+    region: ohio
+    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_TTL
+        value: 15m
+      - key: REFRESH_TOKEN_DAYS
+        value: "7"
+      - key: CLIENT_ORIGINS
+        sync: false # e.g. https://skillloop.vercel.app
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: TRUST_PROXY
+        value: "2" # Vercel rewrite proxy + Render load balancer

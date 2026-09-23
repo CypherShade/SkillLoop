@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SkillType {
+  OFFER // something the user can teach
+  WANT // something the user wants to learn
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  EXPERT
+}
+
+enum SwapStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  bio          String   @default("")
+  location     String   @default("")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  skills        Skill[]
+  refreshTokens RefreshToken[]
+  sentSwaps     SwapRequest[]  @relation("SwapRequester")
+  receivedSwaps SwapRequest[]  @relation("SwapReceiver")
+}
+
+// One row per issued refresh token. Only the SHA-256 hash is stored, never the raw token.
+// Tokens issued from the same login share a `family`, so reuse of a rotated token
+// can revoke the whole chain (refresh-token reuse detection).
+model RefreshToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  family     String
+  userId     String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  userAgent  String    @default("")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  icon      String   @default("sparkles")
+  createdAt DateTime @default(now())
+
+  skills Skill[]
+}
+
+model Skill {
+  id          String     @id @default(cuid())
+  title       String
+  description String     @default("")
+  type        SkillType
+  level       SkillLevel @default(INTERMEDIATE)
+  userId      String
+  categoryId  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  offeredInSwaps SwapRequest[] @relation("OfferedSkill")
+  wantedInSwaps  SwapRequest[] @relation("RequestedSkill")
+
+  @@index([type, categoryId])
+  @@index([userId])
+}
+
+model SwapRequest {
+  id               String     @id @default(cuid())
+  requesterId      String
+  receiverId       String
+  offeredSkillId   String // requester's OFFER skill
+  requestedSkillId String // receiver's OFFER skill
+  message          String     @default("")
+  status           SwapStatus @default(PENDING)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  requester      User  @relation("SwapRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver       User  @relation("SwapReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  offeredSkill   Skill @relation("OfferedSkill", fields: [offeredSkillId], references: [id], onDelete: Cascade)
+  requestedSkill Skill @relation("RequestedSkill", fields: [requestedSkillId], references: [id], onDelete: Cascade)
+
+  @@index([requesterId, status])
+  @@index([receiverId, status])
+}
