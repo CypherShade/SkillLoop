@@ -99,10 +99,6 @@ export default function Landing() {
           <ArrowLeftRight size={20} aria-hidden="true" /> Swap requests you can track
         </div>
       </section>
-
-      <footer className="container footer muted">
-        SkillLoop · DigiHust Full-Stack Internship, Assignment 3 · Muhammad Owais
-      </footer>
     </div>
   );
 }
