@@ -4,6 +4,8 @@
 > Full-Stack Integration · JWT Authentication · Global State Management
 > Muhammad Owais, DGH2600168
 
+**Live app:** https://skillloop-six.vercel.app · **API health:** https://skillloop-six.vercel.app/api/health
+
 SkillLoop is a marketplace where no money changes hands. Members list skills they **can teach** and
 skills they **want to learn**. A matching engine finds people who teach what you want and want what
 you teach (a "mutual loop"), and members send and manage **swap requests** through their whole
