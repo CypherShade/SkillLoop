@@ -3,6 +3,9 @@ const validate = require('../middleware/validate');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
 const s = require('../validators/schemas');
+const env = require('../config/env');
+const ApiError = require('../utils/ApiError');
+const { pruneTokens } = require('../services/auth.service');
 
 const auth = require('../controllers/auth.controller');
 const users = require('../controllers/user.controller');
@@ -15,6 +18,15 @@ const admin = require('../controllers/admin.controller');
 const router = Router();
 
 router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+
+// ---- Scheduled jobs (Vercel Cron, see vercel.json) ----
+// Serverless functions cannot run background timers, so token cleanup is triggered daily.
+router.get('/cron/prune-tokens', async (req, res) => {
+  const secret = env.CRON_SECRET;
+  if (!secret || req.get('authorization') !== `Bearer ${secret}`) throw ApiError.unauthorized('Invalid cron secret');
+  await pruneTokens();
+  res.json({ status: 'ok' });
+});
 
 // ---- Auth ----
 router.post('/auth/register', authLimiter, validate(s.register), auth.register);

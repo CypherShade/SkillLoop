@@ -13,6 +13,8 @@ const schema = z.object({
   CLIENT_ORIGINS: z.string().default('http://localhost:5173'),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   TRUST_PROXY: z.coerce.number().int().min(0).default(1),
+  // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>" to scheduled endpoints.
+  CRON_SECRET: z.string().min(16).optional(),
 });
 
 const parsed = schema.safeParse(process.env);

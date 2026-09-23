@@ -15,7 +15,7 @@ lifecycle. Admins moderate members and categories.
 | **Backend** | Node.js · Express 5 · Prisma ORM · PostgreSQL (Neon) · Zod |
 | **Auth** | JWT access tokens (15 min, in memory) + rotating refresh tokens (7 days, httpOnly cookie) · bcryptjs |
 | **Security** | Helmet · CORS allow-list · express-rate-limit · refresh-token reuse detection |
-| **Deploy** | API on Render ([`render.yaml`](render.yaml)) · SPA on Vercel ([`client/vercel.json`](client/vercel.json)) |
+| **Deploy** | One Vercel project: static SPA + Express as a serverless function ([`vercel.json`](vercel.json)) · Neon Postgres |
 
 ---
 
@@ -42,8 +42,8 @@ lifecycle. Admins moderate members and categories.
 │   ├── src/features/*         Redux Toolkit slices (auth, skills, swaps, matches, ...)
 │   ├── src/routes/guards.jsx  Protected / role / guest route guards
 │   ├── src/hooks/useForm.js   Zod-powered form hook
-│   ├── src/pages/*            Screens
-│   └── vercel.json            SPA fallback + /api rewrite to Render
+│   └── src/pages/*            Screens
+├── api/index.js               Vercel serverless entry (wraps the Express app)
 ├── server/                    Express REST API
 │   ├── prisma/schema.prisma   Data model
 │   ├── prisma/seed.js         Demo data
@@ -54,7 +54,7 @@ lifecycle. Admins moderate members and categories.
 │       ├── services/auth.service.js  Tokens, rotation, reuse detection
 │       ├── middleware/*       auth, validate, rateLimit, errorHandler
 │       └── validators/schemas.js     Zod schemas
-└── render.yaml                Render Blueprint for the API
+└── vercel.json                Build, /api rewrite, SPA fallback, region, daily cron
 ```
 
 ## Running locally
@@ -140,12 +140,33 @@ All routes are prefixed with `/api`. Errors always have the shape `{ "error": { 
 | GET | `/admin/users?q&page` | admin | Member list |
 | PATCH | `/admin/users/:id` | admin | Change role / activate / deactivate |
 
-## Deployment
+## Deployment (Vercel + Neon)
 
-1. **Database:** create a Neon project and copy the pooled URL (`DATABASE_URL`) and the direct URL (`DIRECT_URL`).
-2. **API on Render:** New → Blueprint → select this repo (`render.yaml`). Fill in `DATABASE_URL`, `DIRECT_URL` and `CLIENT_ORIGINS` (your Vercel URL). The build step runs migrations. Seed once from your machine with `npm run db:seed`.
-3. **Frontend on Vercel:** import the repo and set the root directory to `client`. The framework (Vite) is detected automatically. If your Render URL differs, edit the `/api` rewrite destination in `client/vercel.json`.
+The whole app is one Vercel project. Vite builds the SPA into static files, and
+[`api/index.js`](api/index.js) runs the same Express app as a serverless function. Everything is served
+from one domain, so the refresh cookie is first-party (it works in Safari and in browsers that block
+third-party cookies) and no cross-site CORS setup is needed.
 
-The Vercel rewrite proxies `/api/*` to Render, so the browser sees one origin and the refresh cookie is
-first-party, which also works in Safari and in browsers that block third-party cookies. To call the API
-directly instead, set `VITE_API_URL=https://<render-app>/api` and `COOKIE_SAMESITE=none` on the server.
+```
+Browser ──▶ Vercel (region cle1, Cleveland)
+             ├── /         → client/dist (static SPA, index.html fallback)
+             └── /api/*    → api/index.js → Express → Prisma ──▶ Neon Postgres (AWS us-east-2, Ohio)
+```
+
+1. **Database:** create a Neon project in AWS us-east-2 and copy the pooled URL (`DATABASE_URL`) and
+   the direct URL (`DIRECT_URL`).
+2. **Vercel:** import the GitHub repo and leave the root directory as the repo root.
+   [`vercel.json`](vercel.json) sets the install and build commands, output directory, rewrites and region.
+3. **Environment variables** (Project → Settings → Environment Variables): `DATABASE_URL`, `DIRECT_URL`,
+   `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` (two different random values of 32+ characters), and
+   `CRON_SECRET`.
+4. **Deploy.** The build runs `prisma generate` and `prisma migrate deploy`, so the schema is applied
+   automatically. Seed demo data once from your machine with `npm run db:seed` in `server/`.
+
+Serverless notes:
+- A daily **Vercel Cron** job (`/api/cron/prune-tokens`, authorized with `CRON_SECRET`) cleans up
+  expired and revoked refresh tokens, replacing the in-process timer used when running locally.
+- The function region (`cle1`) is next to the Neon database, so each query takes a few milliseconds.
+- Rate-limit counters are kept in memory per function instance, which is fine at this scale. A shared
+  store such as Redis would make them global.
+- Local development is unchanged: run `npm run dev` in `server/` and in `client/`.
